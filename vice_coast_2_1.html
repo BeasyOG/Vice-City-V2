@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>VICE COAST 2.1 – NPC & Interaktionen</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07131e;color:#fff;font-family:Arial,sans-serif}#game{position:fixed;inset:0}canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 5px #000}.brand{position:absolute;top:12px;left:14px;font-weight:900;letter-spacing:3px;font-size:17px;color:#9efcff}.sub{font-size:9px;letter-spacing:2px;margin-top:3px}
+#stats{position:absolute;right:12px;top:10px;text-align:right;font-weight:bold;font-size:11px;line-height:1.75}
+#mission{position:absolute;bottom:12px;left:12px;background:#06121ddd;border:1px solid #5ee9ee66;border-radius:8px;padding:9px 11px;max-width:250px;font-size:11px}#mission b{color:#8efaff;letter-spacing:1px}
+#help{position:absolute;bottom:12px;right:12px;text-align:right;font-size:10px;line-height:1.55}
+#toast{position:absolute;top:25%;left:50%;transform:translateX(-50%);font-weight:900;letter-spacing:1px;color:#9efcff;opacity:0;white-space:nowrap;text-align:center}
+#prompt{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);background:#071522dd;border:1px solid #8efaff88;border-radius:7px;padding:9px 13px;font-size:12px;display:none;white-space:nowrap}
+#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;color:#fff;display:none}
+#touch{display:none;position:fixed;bottom:0;left:0;right:0;height:150px;pointer-events:none}.pad{position:absolute;left:10px;bottom:10px;display:grid;grid-template-columns:45px 45px 45px;grid-template-rows:40px 40px;gap:4px;pointer-events:auto}.ctrl{border:1px solid #ffffff70;background:#06121edd;color:white;border-radius:9px;font-weight:bold;touch-action:none}.pad #up{grid-column:2}.pad #left{grid-column:1;grid-row:2}.pad #down{grid-column:2;grid-row:2}.pad #right{grid-column:3;grid-row:2}
+#actions{position:absolute;right:9px;bottom:10px;display:grid;grid-template-columns:64px 64px;gap:4px;pointer-events:auto}#actions button{height:39px;font-size:10px}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#06111df2,#102c3dee);z-index:10}.panel{width:min(91vw,460px);padding:25px;border:1px solid #77efff77;border-radius:16px;background:#071522f5;box-shadow:0 20px 80px #0009}.panel h1{margin:0;color:#9efcff;font-size:32px;letter-spacing:3px}.panel p{font-size:13px;line-height:1.5;color:#d5e7ee}.panel button{background:#9efcff;color:#04131d;border:0;border-radius:8px;padding:14px 22px;font-weight:900;letter-spacing:1px;font-size:13px}.note{font-size:11px!important;color:#91aab5!important}#loading{min-height:18px;color:#9efcff;font-size:12px;margin-top:10px}
+#dialog{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);width:min(88vw,390px);padding:14px;background:#071522f2;border:1px solid #8efaff88;border-radius:10px;display:none;z-index:4;text-align:center;pointer-events:auto}#dialog strong{color:#9efcff}#dialog p{font-size:13px;line-height:1.45;margin:8px 0}#dialog button{background:#9efcff;border:0;border-radius:6px;padding:8px 13px;font-weight:bold}
+@media(pointer:coarse){#touch{display:block}#help{display:none}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+ <div class="brand">VICE COAST 2.1<div class="sub">OPEN WORLD · PEOPLE & INTERACTIONS</div></div>
+ <div id="stats">GELD&nbsp; $<span id="cash">500</span><br>WAFFE&nbsp; <span id="weapon">PISTOLE</span><br>MUNITION&nbsp; <span id="ammo">12 / 60</span><br>GESUCHT&nbsp; <span id="wanted">☆☆☆☆☆</span><br>GESUNDHEIT&nbsp; <span id="health">100</span></div>
+ <div id="mission"><b>STADTLEBEN</b><div id="missionText">Sprich mit Menschen, erledige kleine Aufträge oder besuche den Laden.</div></div>
+ <div id="help">WASD · LAUFEN / FAHREN<br>MAUS · UMSCHAUEN · LINKSKLICK · FEUER<br>E · MIT NPC / LADEN / AUTO INTERAGIEREN<br>1/2 · WAFFE WECHSELN · R · NACHLADEN</div>
+ <div id="toast"></div><div id="crosshair">+</div><div id="prompt"></div>
+</div>
+<div id="dialog"><strong id="dialogTitle">Bürger</strong><p id="dialogText"></p><button id="dialogClose">OK</button></div>
+<div id="touch"><div class="pad"><button class="ctrl" id="up">▲</button><button class="ctrl" id="left">◀</button><button class="ctrl" id="down">▼</button><button class="ctrl" id="right">▶</button></div><div id="actions"><button class="ctrl" id="interact">AKTION</button><button class="ctrl" id="fire">FEUER</button><button class="ctrl" id="reload">LADEN</button><button class="ctrl" id="weaponBtn">WAFFE</button></div></div>
+<div id="start"><div class="panel"><h1>VICE COAST 2.1</h1><p>Jetzt mit belebter Stadt: Zivilisten, Polizisten, Gesprächen, kleinen Nebenaufträgen, Läden und Fahrzeug-Interaktionen.</p><p><b>PC:</b> WASD laufen/fahren · E interagieren · Linksklick schießen · 1/2 Waffen · R nachladen.<br><b>Handy:</b> Steuerkreuz und Aktionsknöpfe.</p><button id="play" type="button">SPIEL STARTEN</button><div id="loading">3D-Engine wird geladen …</div><p class="note">Bitte mit Internetverbindung in Safari/Chrome öffnen. Falls die 3D-Bibliothek nicht geladen werden kann, zeigt die Meldung den Grund.</p></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);let gameStarted=false,scene,camera,renderer,clock,car,player,activeVehicle=true,heading=0,speed=0,cash=500,health=100,wanted=0,ammo=12,reserve=60,weapon=1,missionCount=0;
+const keys={},npcs=[],bullets=[],collidables=[];let near=null,dialogOpen=false,toastTimer;
+function say(msg){$('toast').textContent=msg;$('toast').style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
+function updateHUD(){$('cash').textContent=cash;$('health').textContent=health;$('wanted').textContent='★'.repeat(wanted)+'☆'.repeat(5-wanted);$('ammo').textContent=ammo+' / '+reserve;$('weapon').textContent=weapon===1?'PISTOLE':'SCHROTFLINTE'}
+function mat(color,rough=.8,metal=0){return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal})}
+function box(parent,w,h,d,m,x,y,z){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function init(){
+ if(!window.THREE)throw new Error('Three.js konnte nicht geladen werden. Prüfe deine Internetverbindung oder öffne die Datei in Safari/Chrome.');
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x91c9dc);scene.fog=new THREE.Fog(0x91c9dc,90,330);
+ camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,600);
+ renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputEncoding=THREE.sRGBEncoding;$('game').appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xd9f6ff,0x59604a,1.7));let sun=new THREE.DirectionalLight(0xffe2b5,2.3);sun.position.set(-50,90,40);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene.add(sun);
+ let ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat(0x9a9a70));ground.rotation.x=-Math.PI/2;ground.position.y=-.2;ground.receiveShadow=true;scene.add(ground);
+ let sea=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat(0x168ba8,.3,.1));sea.rotation.x=-Math.PI/2;sea.position.set(0,-.45,-210);scene.add(sea);
+ let sand=new THREE.Mesh(new THREE.PlaneGeometry(500,50),mat(0xe2c78e));sand.rotation.x=-Math.PI/2;sand.position.set(0,-.08,-100);scene.add(sand);
+ let road=mat(0x30383d),stripe=mat(0xf5e9bd);
+ for(let z=-140;z<=140;z+=50){box(scene,500,.12,12,road,0,-.05,z);for(let x=-240;x<250;x+=22)box(scene,8,.025,.2,stripe,x,.03,z)}
+ for(let x=-150;x<=150;x+=50){box(scene,12,.12,500,road,x,-.05,0);for(let z=-240;z<250;z+=22)box(scene,.2,.025,8,stripe,x,.03,z)}
+ const buildingColors=[0xf0c5a0,0xd9e4dc,0xe7b4a0,0x8db5bd,0xe8d9b7,0xaaa8c4,0xc9d6d0];
+ for(let x=-135;x<=135;x+=25)for(let z=-135;z<=135;z+=25){if(Math.abs(x%50)<7||Math.abs(z%50)<7||z<-83)continue;let h=10+Math.random()*25;box(scene,13,h,13,mat(buildingColors[Math.floor(Math.random()*buildingColors.length)]),x,h/2,z)}
+ function palm(x,z){let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.35,.65,8,7),mat(0x765038));trunk.position.set(x,4,z);scene.add(trunk);for(let i=0;i<7;i++){let a=i*Math.PI*2/7,leaf=new THREE.Mesh(new THREE.ConeGeometry(.5,7,5),mat(0x27744c));leaf.position.set(x+Math.cos(a)*1.5,7.7,z+Math.sin(a)*1.5);leaf.rotation.z=-Math.cos(a)*.8;leaf.rotation.x=Math.sin(a)*.8;scene.add(leaf)}}
+ for(let x=-220;x<=220;x+=24){palm(x,-83);palm(x,-115)}
+ // shop building and marker
+ let shop= new THREE.Group();shop.position.set(18,0,-18);scene.add(shop);box(shop,13,7,9,mat(0xd8b18b),0,3.5,0);box(shop,13,1,9,mat(0x254b60),0,7.3,0);box(shop,5,2.7,.2,mat(0x173e4b,.2),0,2.6,4.6);box(shop,8,.6,.4,mat(0x123344),0,5.8,4.7);let sign=box(shop,7,.8,.3,mat(0x20d6dc,.3),0,6.5,4.8);
+ let signText=document.createElement('div'); // visual shop sign is a bright panel
+ const shopPos=new THREE.Vector3(18,0,-12);
+ // car
+ car=new THREE.Group();scene.add(car);box(car,2.1,.65,4,mat(0xa62c45,.35,.45),0,.85,0);box(car,1.55,.8,1.7,mat(0x244555,.25,.25),0,1.55,.35);box(car,1.5,.12,1.55,mat(0xa62c45),0,2,.35);
+ for(let x of [-1.08,1.08])for(let z of [-1.25,1.25]){let w=new THREE.Mesh(new THREE.CylinderGeometry(.4,.4,.25,14),mat(0x111518));w.rotation.z=Math.PI/2;w.position.set(x,.45,z);car.add(w)}
+ car.position.set(0,0,12);
+ player=makePerson(0x263c4e,0xc58d68);player.position.set(3,0,12);scene.add(player);player.visible=false;
+ // NPC population: citizens and cops
+ const outfits=[0x3d7891,0xc17b43,0x55704d,0x8a547f,0xb6b7bb,0x303b55,0xd4a34f];
+ for(let i=0;i<19;i++){let x=(Math.random()-.5)*180,z=(Math.random()-.5)*160;if(Math.abs(x%50)<8||Math.abs(z%50)<8)z+=9;let npc=makePerson(outfits[i%outfits.length],0xb98162);npc.position.set(x,0,z);scene.add(npc);npcs.push({mesh:npc,type:'civilian',name:['Alex','Mia','Noah','Lena','Sam','Jamie','Kim'][i%7],dialogue:['Schönes Wetter heute, oder?','Weißt du, wo der Strand ist? Da vorne am Wasser.','Ich spare gerade auf ein neues Auto.','Pass auf dich auf. Hier ist immer was los.'][i%4],walkTarget:new THREE.Vector3(x+(Math.random()-.5)*20,0,z+(Math.random()-.5)*20),cool:Math.random()*3,alive:true})}
+ for(let i=0;i<4;i++){let cop=makePerson(0x1c345c,0xc58d68,true);cop.position.set(-35+i*13,0,22+i*4);scene.add(cop);npcs.push({mesh:cop,type:'police',name:'Polizist',dialogue:'Alles ruhig hier. Bleiben Sie auf dem Gehweg.',walkTarget:new THREE.Vector3(-30+i*10,0,25),cool:0,alive:true})}
+ // police car
+ let policeCar=new THREE.Group();scene.add(policeCar);box(policeCar,2.2,.7,4,mat(0xe7e9ec),0,.85,0);box(policeCar,1.5,.75,1.6,mat(0x263c55),0,1.5,.3);box(policeCar,.9,.18,.35,mat(0x246bff),0,2,0);policeCar.position.set(-20,0,35);
+ // glowing store marker
+ let marker=new THREE.Mesh(new THREE.TorusGeometry(2,.18,8,32),new THREE.MeshBasicMaterial({color:0x54ffff}));marker.rotation.x=Math.PI/2;marker.position.set(shopPos.x,.25,shopPos.z);scene.add(marker);
+ scene.userData.shopMarker=marker;
+ // click to shoot at target point (simple raycast)
+ renderer.domElement.addEventListener('click',shoot);renderer.domElement.addEventListener('pointerdown',()=>{if(document.pointerLockElement!==renderer.domElement && !('ontouchstart'in window))renderer.domElement.requestPointerLock?.()});
+ document.addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement&&!dialogOpen){heading-=e.movementX*.0025;if(!activeVehicle)player.rotation.y=heading}});
+ clock=new THREE.Clock();updateHUD();animate();
+}
+function makePerson(clothes,skin,police=false){let g=new THREE.Group();let torso=new THREE.Mesh(new THREE.CapsuleGeometry(.32,.72,4,7),mat(clothes));torso.position.y=1;torso.castShadow=true;g.add(torso);let head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,10),mat(skin));head.position.y=1.65;g.add(head);for(let x of [-.13,.13]){let leg=box(g,.16,.65,.18,mat(police?0x1a2638:0x333c45),x,.35,0);leg.position.y=.35}return g}
+function openDialog(title,txt){$('dialogTitle').textContent=title;$('dialogText').textContent=txt;$('dialog').style.display='block';dialogOpen=true}
+$('dialogClose').onclick=()=>{$('dialog').style.display='none';dialogOpen=false}
+function interact(){
+ if(dialogOpen)return;
+ let pos=activeVehicle?car.position:player.position;
+ let shopDist=pos.distanceTo(new THREE.Vector3(18,0,-12));
+ if(shopDist<9){wanted=Math.min(5,wanted+1);cash+=180+Math.floor(Math.random()*120);updateHUD();$('missionText').textContent='Ladenüberfall geschafft. Die Polizei sucht dich – verschwinde!';say('LADEN AUSGERAUBT · +$'+(180+0));return}
+ if(activeVehicle&&pos.distanceTo(player.position)<3){activeVehicle=false;player.visible=true;car.visible=false;player.position.copy(car.position);return}
+ if(!activeVehicle&&pos.distanceTo(car.position)<4){activeVehicle=true;player.visible=false;car.visible=true;return}
+ let nearest=null,dist=1e9;for(let n of npcs){if(!n.alive)continue;let d=pos.distanceTo(n.mesh.position);if(d<dist){dist=d;nearest=n}}
+ if(nearest&&dist<5){
+  if(nearest.type==='police'){if(wanted>0){openDialog('Polizist','Sie werden gesucht. Drücken Sie E nicht weiter und entfernen Sie sich nicht! (Demo: Nach kurzer Zeit sinkt dein Fahndungslevel, wenn du außer Sichtweite bist.)')}else openDialog('Polizist','Guten Tag. Halten Sie sich an die Regeln und bleiben Sie sicher.')}
+  else {let choice=nearest.dialogue;if(Math.random()<.35){cash+=50;missionCount++;choice+=' Ich habe hier 50 $ gefunden – kannst du sie gebrauchen? +$50';updateHUD()}openDialog(nearest.name,choice)}
+  return
+ }
+ say('Hier gibt es gerade nichts zum Interagieren.');
+}
+function shoot(){
+ if(!gameStarted||dialogOpen||activeVehicle)return;
+ if(ammo<=0){say('Magazin leer – R zum Nachladen');return}
+ ammo--;updateHUD();$('crosshair').style.display='block';
+ const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(0,0),camera);let targets=npcs.filter(n=>n.alive).map(n=>n.mesh);let hits=ray.intersectObjects(targets,true);
+ if(hits.length){let obj=hits[0].object;let target=npcs.find(n=>n.alive&&(n.mesh===obj||n.mesh.children.includes(obj)||n.mesh.children.some(c=>c===obj.parent)));if(target){if(target.type==='police'){wanted=Math.min(5,wanted+2);say('Polizei alarmiert!');}else{target.alive=false;target.mesh.visible=false;wanted=Math.min(5,wanted+1);say('Zivilist verletzt – Polizei alarmiert!')}updateHUD()}}
+}
+function reload(){let need=(weapon===1?12:6)-ammo;if(need>0&&reserve>0){let n=Math.min(need,reserve);ammo+=n;reserve-=n;updateHUD();say('Nachgeladen')}}
+function switchWeapon(){weapon=weapon===1?2:1;ammo=weapon===1?12:6;reserve=weapon===1?60:24;updateHUD();say(weapon===1?'Pistole ausgewählt':'Schrotflinte ausgewählt')}
+function animate(){if(!gameStarted)return;requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);let forward=keys.w||keys.arrowup,back=keys.s||keys.arrowdown,left=keys.a||keys.arrowleft,right=keys.d||keys.arrowright;
+ if(activeVehicle){if(forward)speed+=19*dt;if(back)speed-=15*dt;speed*=Math.pow(keys[' ']?.88:.975,dt*60);speed=THREE.MathUtils.clamp(speed,-10,35);let steer=(left?1:0)-(right?1:0);heading+=steer*dt*(1.6+Math.abs(speed)*.025)*Math.sign(speed||1);car.rotation.y=heading;car.position.x+=Math.sin(heading)*speed*dt;car.position.z+=Math.cos(heading)*speed*dt}
+ else{let move=new THREE.Vector3((right?1:0)-(left?1:0),0,(back?1:0)-(forward?1:0));if(move.lengthSq()){move.normalize().multiplyScalar(7*dt).applyAxisAngle(new THREE.Vector3(0,1,0),heading);player.position.add(move);player.rotation.y=heading}}
+ let pos=activeVehicle?car.position:player.position;
+ for(let n of npcs){if(!n.alive)continue;if(n.type==='police'&&wanted>0&&n.mesh.position.distanceTo(pos)<65){let dir=pos.clone().sub(n.mesh.position);dir.y=0;if(dir.length()>2){dir.normalize();n.mesh.position.add(dir.multiplyScalar((2.4+wanted*.7)*dt));n.mesh.rotation.y=Math.atan2(dir.x,dir.z)}}else{n.cool-=dt;if(n.cool<0){n.cool=2+Math.random()*3;n.walkTarget.set(n.mesh.position.x+(Math.random()-.5)*12,0,n.mesh.position.z+(Math.random()-.5)*12)}let d=n.walkTarget.clone().sub(n.mesh.position);d.y=0;if(d.length()>1){d.normalize();n.mesh.position.add(d.multiplyScalar(.9*dt));n.mesh.rotation.y=Math.atan2(d.x,d.z)}}}
+ if(wanted>0&&Math.random()<dt*.025){wanted=Math.max(0,wanted-1);updateHUD()}
+ let nearest=null,nd=1e9;for(let n of npcs){if(!n.alive)continue;let d=pos.distanceTo(n.mesh.position);if(d<nd){nd=d;nearest=n}}
+ let shopD=pos.distanceTo(new THREE.Vector3(18,0,-12));let prompt='';if(shopD<9)prompt='E · LADEN ÜBERFALLEN';else if(activeVehicle&&pos.distanceTo(player.position)<3)prompt='';else if(!activeVehicle&&pos.distanceTo(car.position)<4)prompt='E · INS AUTO STEIGEN';else if(nearest&&nd<5)prompt='E · MIT '+(nearest.type==='police'?'POLIZIST':nearest.name.toUpperCase())+' SPRECHEN';$('prompt').textContent=prompt;$('prompt').style.display=prompt?'block':'none';
+ let focus=pos;let offset=activeVehicle?new THREE.Vector3(-Math.sin(heading)*10,5,Math.cos(heading)*10):new THREE.Vector3(-Math.sin(heading)*7,4,Math.cos(heading)*7);camera.position.lerp(focus.clone().add(offset),.14);camera.lookAt(focus.x,focus.y+1.2,focus.z);$('stats').querySelector('#wanted').textContent='★'.repeat(wanted)+'☆'.repeat(5-wanted);renderer.render(scene,camera)}
+$('play').addEventListener('click',()=>{if(gameStarted)return;$('loading').textContent='Lade 3D-Stadt …';try{init();gameStarted=true;$('start').style.display='none';say('Willkommen in Vice Coast!')}catch(err){$('loading').textContent='Fehler: '+err.message;console.error(err)}});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(!gameStarted)return;if(e.key.toLowerCase()==='e')interact();if(e.key.toLowerCase()==='r')reload();if(e.key==='1'){weapon=1;ammo=12;updateHUD()}if(e.key==='2'){weapon=2;ammo=6;updateHUD()}});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function bind(id,key){let el=$(id);el.addEventListener('pointerdown',e=>{e.preventDefault();keys[key]=true});['pointerup','pointercancel','pointerleave'].forEach(ev=>el.addEventListener(ev,()=>keys[key]=false))}
+bind('up','w');bind('down','s');bind('left','a');bind('right','d');$('interact').addEventListener('pointerdown',e=>{e.preventDefault();interact()});$('fire').addEventListener('pointerdown',e=>{e.preventDefault();shoot()});$('reload').addEventListener('pointerdown',e=>{e.preventDefault();reload()});$('weaponBtn').addEventListener('pointerdown',e=>{e.preventDefault();switchWeapon()});
+addEventListener('resize',()=>{if(camera&&renderer){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}});
+</script>
+</body></html>
